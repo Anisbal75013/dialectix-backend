@@ -5,14 +5,14 @@
  * It is NOT used for local development (src/main.ts handles that).
  *
  * Key differences vs src/main.ts:
- *  – Does NOT call app.listen() — Vercel manages the HTTP server
- *  – Sets globalPrefix('api') so routes match /api/ai/* as called by the frontend
+ *  – Does NOT call app.listen()   — Vercel manages the HTTP server
+ *  – NO globalPrefix              — routes are served at their natural paths
  *  – Caches the Express handler across warm invocations (zero re-init cost)
  *
- * URL mapping:
- *  Frontend calls   → https://dialectix-backend.vercel.app/api/ai/judge
- *  Vercel routes    → this function (vercel.json: "/(.*)" → "/api/index.ts")
- *  NestJS handles   → /api/ai/judge  (globalPrefix = 'api', controller = 'ai')
+ * URL mapping (no /api prefix):
+ *  Frontend calls   → https://dialectix-backend.vercel.app/health/db
+ *  Vercel rewrite   → /api/index  (vercel.json: "/(.*)" → "/api/index")
+ *  NestJS handles   → /health/db  (@Controller('health') + @Get('db'))
  */
 
 import { NestFactory }    from '@nestjs/core';
@@ -38,7 +38,7 @@ async function bootstrap() {
 
   app.enableCors({
     origin:         allowedOrigins,
-    methods:        ['GET', 'POST', 'OPTIONS'],
+    methods:        ['GET', 'POST', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials:    false,
   });
@@ -50,13 +50,11 @@ async function bootstrap() {
     transform:            true,   // auto-cast primitive types
   }));
 
-  /* ── Global prefix ─────────────────────────────────────────────────────── *
-   * Vercel routes all traffic to this function, so NestJS receives full paths:
-   *   /api/ai/judge  |  /api/ai/respond  |  /api/ai/report  |  /api/health
-   * Setting globalPrefix('api') makes the controllers match these paths.
-   * ── NOT set in src/main.ts (local dev uses /ai/judge directly) ──────────
-   */
-  app.setGlobalPrefix('api');
+  /* ── Pas de globalPrefix ────────────────────────────────────────────────── *
+   * Les routes NestJS sont servies à leur chemin naturel :
+   *   GET  /health/db    GET  /users    POST /battles    PATCH /tournaments/:id/status
+   * Le frontend appelle directement https://dialectix-backend.vercel.app/<route>
+   * ────────────────────────────────────────────────────────────────────────── */
 
   await app.init();
 
