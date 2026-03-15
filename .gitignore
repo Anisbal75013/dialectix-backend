@@ -2,3 +2,7 @@ node_modules/
 dist/
 .env
 *.js.map
+.env
+.env.development
+.env.production
+node_modules
